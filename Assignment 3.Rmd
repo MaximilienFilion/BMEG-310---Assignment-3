@@ -1,11 +1,13 @@
 ---
 title: "BMEG 310 Assignment 3 - Group 28"
-author: 
-  - Maximilien Filion - 20598645"
-  - Aneesh Kaura - 
-  - Monica -
+author:
+- "Maximilien Filion - 20598645, "
+- "Aneesh Kaura - 66832304, "
+- "Monica Mihailescu - 47409289 "
 date: "2025-10-23"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 # Introduction
@@ -110,7 +112,7 @@ seq1_seq2_score_matrix <- needleman_wunsch_storing_matrix(seq1, seq2)
 # This function performs traceback on a needleman-wunsch score matrix. It returns a vector containing the instructions to the path of minimal score. The arguments are the two DNA character vectors and the needleman-wunsch score matrix.
 needleman_wunsch_traceback_vector <- function(storing_table, s1, s2) {
   
-  # initialize the number of steps that it will take to reach [1,1]
+  # initialize the number of steps that it will take to reach the first cell
   i <- nrow(storing_table)
   j <- ncol(storing_table)
   traceback_vector <- c()
@@ -151,7 +153,7 @@ needleman_wunsch_traceback_vector <- function(storing_table, s1, s2) {
 # call the function on the score matrix found precedently
 needleman_wunsch_traceback_vector(seq1_seq2_score_matrix, seq1, seq2)
 ```
-
+The Needleman–Wunsch algorithm was used to perform the alignment. A scoring matrix was initialized based on the lengths of the two sequences, with the first row and column filled with gap penalties. At each step, the algorithm compared bases to determine matches, mismatches, or gaps, and filled the matrix accordingly. Finally, a traceback process identified the sequence of steps leading to the optimal alignment. The first 9 elements of the table were computed as discussed above. 
 
 
 ## Q3. Looking at the Metadata of an alignment (SAM) file
