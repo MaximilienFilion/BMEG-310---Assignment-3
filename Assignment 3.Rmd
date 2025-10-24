@@ -27,12 +27,6 @@ In your answers, please list all relevant code used and results found.
 Data for Q1-Q2: single_cell_RNA_seq_bam.sam  
 Data for Q3: RNA_seq_annotated_variants.vcf  
 
-```{r}
-single_cell_RNA_seq_bam <- read 
-RNA_seq_annotated_variants <-
-```
-
-
 # Questions 
 ## Q1. Sequencing technologies
 Why areas of the genome with high GC content are hard to sequence?  
@@ -66,7 +60,96 @@ include how you calculated the first top-left 9 elements of the table.
 
 
 ```{r}
+# create the two DNA sequence objects
+seq1 <- strsplit("ATTCGAC", split = "")[[1]]
+seq2 <- strsplit("ATCAC", split = "")[[1]]
 
+# This function performs the needleman-wunsch alignment on two DNA character strings. It will apply a penality of -2 for a gap, -1 for a base transition (C-T or A-G mutation), -5 for a transversion, and 1 for a match. the first argument is the reference and the second is the segment we try to align. It returns a matrix, representing the scores of different alignments.
+needleman_wunsch_storing_matrix <- function(s1, s2) {
+  
+  # convert the DNA sequence to a numeric vector
+  s1 <- ifelse(s1 == "A", 1, ifelse(s1 == "T", 2, ifelse(s1 == "C", 3, ifelse(s1 == "G", 4, -1))))
+  s2 <- ifelse(s2 == "A", 1, ifelse(s2 == "T", 2, ifelse(s2 == "C", 3, ifelse(s2 == "G", 4, -1))))
+  
+  # create a transition transversion matrix
+  penalty_matrix <- rbind(c(1,-5,-5,-1),c(-5,1,-1,-5),c(-5,-1,1,-5), c(-1,-5,-5,1))
+  
+  # create gap penalty
+  gap_penalty <- -2
+  
+  # Needleman-Wunsch algorithm
+  # Initiate the matrix
+  storing_table <- matrix(0, nrow = (length(s2) + 1), ncol = (length(s1) + 1))
+  # fill in with gap penalty on the x-axis
+  for (i in 2:ncol(storing_table)){
+    storing_table[1,i] <- (-2) * (i-1)
+  }
+  # fill in with gap penalty on the y-axis
+  for (i in 2:nrow(storing_table)){
+    storing_table[i,1] <- (-2) * (i-1)
+  }
+  
+  # fill the table
+  for (i in 2:nrow(storing_table)){
+    for (j in 2:ncol(storing_table)){
+      match_score <- storing_table[i - 1, j - 1] + penalty_matrix[s2[i - 1], s1[j - 1]]
+      delete_score <- storing_table[i - 1, j] + gap_penalty
+      insert_score <- storing_table[i, j - 1] + gap_penalty
+      
+      storing_table[i, j] <- max(match_score, delete_score, insert_score)
+    }
+  }
+  
+  print (storing_table)
+}
+
+# call the function on our two DNA strings
+seq1_seq2_score_matrix <- needleman_wunsch_storing_matrix(seq1, seq2)
+
+
+# This function performs traceback on a needleman-wunsch score matrix. It returns a vector containing the instructions to the path of minimal score. The arguments are the two DNA character vectors and the needleman-wunsch score matrix.
+needleman_wunsch_traceback_vector <- function(storing_table, s1, s2) {
+  
+  # initialize the number of steps that it will take to reach [1,1]
+  i <- nrow(storing_table)
+  j <- ncol(storing_table)
+  traceback_vector <- c()
+  
+  # convert the DNA sequence to a numeric vector
+  s1 <- ifelse(s1 == "A", 1, ifelse(s1 == "T", 2, ifelse(s1 == "C", 3, ifelse(s1 == "G", 4, -1))))
+  s2 <- ifelse(s2 == "A", 1, ifelse(s2 == "T", 2, ifelse(s2 == "C", 3, ifelse(s2 == "G", 4, -1))))
+  
+  # create a transition transversion matrix
+  penalty_matrix <- rbind(c(1,-5,-5,-1),c(-5,1,-1,-5),c(-5,-1,1,-5), c(-1,-5,-5,1))
+  
+  # create gap penalty
+  gap_penalty <- -2
+  
+  while (i > 1 && j > 1) {
+    score <- storing_table[i, j]
+    diag_score <- storing_table[i - 1, j - 1] + penalty_matrix[s2[i - 1], s1[j - 1]]
+    up_score   <- storing_table[i - 1, j] + gap_penalty
+    left_score <- storing_table[i, j - 1] + gap_penalty
+  
+    # check which direction produced the current score
+    if (score == diag_score) {
+      traceback_vector <- c(traceback_vector, "diag")
+      i <- i - 1
+      j <- j - 1
+    } else if (score == up_score) {
+      traceback_vector <- c(traceback_vector, "up")
+      i <- i - 1
+    } else if (score == left_score) {
+      traceback_vector <- c(traceback_vector, "left")
+      j <- j - 1
+    }
+  }
+  
+  print(traceback_vector)
+}
+
+# call the function on the score matrix found precedently
+needleman_wunsch_traceback_vector(seq1_seq2_score_matrix, seq1, seq2)
 ```
 
 
