@@ -237,23 +237,63 @@ Comparison of a sample of the BAM file provided against the mandatory fields of 
 ChrX_count <- 0
 for (i in 1:length(sam$V3)){
   if (sam$V3[i] == "X"){
-    ChrX_count <- ChrX_count +1
+    ChrX_count <- ChrX_count + 1
   }
 }
 
 paste("There is ", ChrX_count, "reads that align to chromosome X.")
 ```
 
-
 Hint: You can compare a column vector to a constant using logical symbols (==, <, >, etc.) to get a
 column vector of TRUE or FALSE. Remember, when summing, a true symbol is worth "1" while a
 false symbol is worth "0".  
 
 ### Q4.4. What is the mean base quality (BQ) for reads aligning to chromosome X?   
+```{r}
+# Extract the subset of the SAM files that is aligned to ChrX
+SAM_ChrX <- subset(sam, V3 == "X")
+
+# Load ASCII tools
+library(DescTools)
+
+# Convert the ASCII base quality into a numeric value 
+overall_quality <- 0
+iteration_nu <- 0
+for (i in 1:length(SAM_ChrX$V1)){
+  vector_quality <- mean(CharToAsc(SAM_ChrX$V11[i]))
+  overall_quality <- overall_quality + vector_quality
+  iteration_nu <- iteration_nu + 1
+}
+
+# Compute mean base quality 
+mean_BQ <- round(overall_quality/iteration_nu, 2) - 33
+paste("The mean base quality (BQ) for reads aligning to chromosome X is: ", mean_BQ)
+```
 
 ### Q4.5. Plot the distribution of BQs across all bases and reads as a boxplot. Comment on your observation.  
+```{r}
+# Add a mean read quality to every read 
+SAM_ChrX$mean_quality <- NA 
+
+# Populate the new column with mean read quality 
+for (i in 1:length(SAM_ChrX$V1)){ 
+  SAM_ChrX$mean_quality[i] <- mean(CharToAsc(SAM_ChrX$V11[i])) - 33
+  }
+
+# Plot the boxplot
+library(ggplot2)
+
+ggplot(SAM_ChrX, aes(x = mean_quality)) +
+  geom_boxplot(fill = "slateblue", alpha = 0.3, outlier.color = "red") +
+  ylab("Mean Base Quality per Read") +
+  ggtitle("Distribution of Base Quality Scores Across All Reads") +
+  theme_minimal()
+```
 
 Hint: This is similar to a boxplots that was provided in the lecture related to primary analysis.  
+
+Comment:  
+We can see that the three upper quartiles are quite condensed, suggesting a good base quality along those reads. The tight clustering across reads indicates overall consistent sequencing performance. The median value is high, suggesting that most of the reads have good per-base quality. However, we can also observe many, many outliers that have a mediocre base quality. We might want to get rid of those lower quality reads to ensure we only include high quality reads into our analysis.
 
 ### Q4.6. Referring to section 1.4 of the SAM/BAM documentation, what column contains the leftmost mapping position of the reads?  
 
