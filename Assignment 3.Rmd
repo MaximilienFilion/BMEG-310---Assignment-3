@@ -233,9 +233,15 @@ Comparison of a sample of the BAM file provided against the mandatory fields of 
 - "V11" column stores the quality of the reads, specifically, the ASCII of Phred-scaled base QUALity+33.
 
 ### Q4.3. How many reads in this file align to chromosome X?  
-
 ```{r}
+ChrX_count <- 0
+for (i in 1:length(sam$V3)){
+  if (sam$V3[i] == "X"){
+    ChrX_count <- ChrX_count +1
+  }
+}
 
+paste("There is ", ChrX_count, "reads that align to chromosome X.")
 ```
 
 
