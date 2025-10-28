@@ -158,7 +158,7 @@ The Needleman–Wunsch algorithm was used to perform the alignment. A scoring ma
 
 ## Q3. Looking at the Metadata of an alignment (SAM) file
 ### Q3.1.
-Q3.1. Use `read.csv("single_cell_RNA_seq_bam.sam", nrows=73, sep="\t", header=FALSE,
+Use `read.csv("single_cell_RNA_seq_bam.sam", nrows=73, sep="\t", header=FALSE,
 fill=TRUE)` to load the first 73 lines of the header of the file and print the contents. These lines
 contain tabulated information about the BAM file and the circumstances of its data collection.
 According to the header table in section 1.3 of the BAM/SAM document in the appendix, what do
@@ -167,7 +167,17 @@ the `SN` and `LN` tags indicate?
 ```{r}
 single_cell_RNA_seq_bam <- read.csv("single_cell_RNA_seq_bam.sam", nrows=73, sep="\t", header=FALSE,
 fill=TRUE)
+
+head(single_cell_RNA_seq_bam)
 ```
+
+According to the header table in section 1.3 of the BAM/SAM document in the appendix;
+- `LN` means: Reference sequence length. Range: [1, 2^(31) − 1]
+- `SN` means: Reference sequence name. The `SN` tags and all individual AN names in all @SQ lines must be
+distinct. The value of this field is used in the alignment records in RNAME and RNEXT fields.
+Regular expression: `[:rname:∧*=][:rname:]*`
+
+In simple terms, every observation, denoted by @SQ, has a `SN` field that indicates the name of the reference sequence, and a `LN` field that indicates the lenght of that reference sequence in base-pair length.
 
 
 ### Q3.2.
@@ -175,6 +185,12 @@ A sequence is any template string of bases to which we can align a read. This in
 chromosomes (which are continuous sequences of bases) and new strings resulting from genetic
 modifications. What is the length of the X chromosome, in bp, for our alignment?
 
+```{r}
+# Find the Chromosome X, and its associated length
+ChrX_len <- single_cell_RNA_seq_bam[single_cell_RNA_seq_bam$V2 == "SN:X", "V3"]
+ChrX_len_value <- as.numeric(sub("LN:", "", ChrX_len))
+paste("The length of the Chromosome X is", ChrX_len_value, "base pairs.")
+```
 
 Fun fact (not tested): One of the sequences in this BAM file titled Cre_ERT2 is a Cre-recombinase
 variant. Cre recombinase, when combined with the loxP sequence (see cre-lox recombination) is
@@ -192,6 +208,10 @@ How many reads are there in this BAM file?
 sam <- read.csv("single_cell_RNA_seq_bam.sam", sep="\t", header=FALSE,
 comment.char="@", col.names = paste0("V",seq_len(30)), fill=TRUE)
 sam <- sam[paste0("V",seq_len(11))]
+
+# how many reads are there in this BAM file?
+n_reads <- nrow(sam)
+paste("There is ", n_reads, "reads in this BAM file.")
 ```
 
 ### Q4.2.
@@ -201,7 +221,23 @@ order of columns in the bam file have been preserved in the dataframe**. Which c
 your dataframe should you look at to find the chromosome to which the read was aligned? To
 which BAM data field does the dataframe column "V11" correspond?
 
+```{r}
+# Print the 10th row of the dataframe
+sam[10,]
+```
+![Alt text for the image](Mandatory Fields BAM_SAM.png)   
+
+Comparison of a sample of the BAM file provided against the mandatory fields of BAM files:
+- Both contain 11 fields. In other words, the BAM file provided is complete .
+- The reference chromosome is stored in the column 3, in the RNAME field that stores the reference sequence name.
+- "V11" column stores the quality of the reads, specifically, the ASCII of Phred-scaled base QUALity+33.
+
 ### Q4.3. How many reads in this file align to chromosome X?  
+
+```{r}
+
+```
+
 
 Hint: You can compare a column vector to a constant using logical symbols (==, <, >, etc.) to get a
 column vector of TRUE or FALSE. Remember, when summing, a true symbol is worth "1" while a
