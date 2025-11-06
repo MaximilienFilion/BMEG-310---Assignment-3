@@ -408,14 +408,106 @@ ANN entries separately.
 Hint: Refer to the snpEff documentation in the appendix for a list of snpEff annotation label
 names and summaries of their effects.  
 
+```{r}
+# load VCF (reuse what you had)
+vcf_con <- file("RNA_seq_annotated_variants.vcf", open="r")
+vcf_file <- readLines(vcf_con)
+close(vcf_con)
+header_lines <- vcf_file[grepl("^##", vcf_file)]
+variants <- read.csv("RNA_seq_annotated_variants.vcf", skip=length(header_lines), header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+# find the header line that describes ANN
+ann_header_line <- header_lines[grepl("^##INFO=<ID=ANN,", header_lines)]
+cat("ANN header line (format description):\n", ann_header_line, "\n\n")
+
+# extract ANN field from INFO for first variant
+info1 <- as.character(variants$INFO[1])
+info_split <- strsplit(info1, ";")[[1]]
+ANN_entry <- info_split[grepl("^ANN=", info_split)]
+ANN_value <- sub("^ANN=", "", ANN_entry)
+
+# ANN may have multiple comma-separated annotations; take the FIRST (most important)
+first_ann <- strsplit(ANN_value, ",")[[1]][1]
+
+# split by '|' according to snpEff ANN spec
+ann_fields <- strsplit(first_ann, "\\|")[[1]]
+
+# According to snpEff spec: field order is
+# 1: Allele, 2: Annotation, 3: Annotation_Impact, 4: Gene_Name, 5: Gene_ID, ...
+# print the Annotation field
+annotation_field <- ann_fields[2]
+impact_field <- ann_fields[3]
+gene_field <- ann_fields[4]
+
+cat("First ANN entry (raw):\n", first_ann, "\n\n")
+cat("Parsed fields:\n")
+cat(" Annotation:", annotation_field, "\n")
+cat(" Impact:", impact_field, "\n")
+cat(" Gene name:", gene_field, "\n")
+
+```
+
+
 
 ### Q5.4. Perform the parsing done in Q5.1-3 again on variant line 683. What gene would this variant affect?
+
+```{r}
+# get row 683 (assuming your variants data.frame is 1-based like read.csv)
+row_idx <- 683
+if (nrow(variants) < row_idx) stop("VCF has fewer than 683 variants")
+
+info683 <- as.character(variants$INFO[row_idx])
+info_split683 <- strsplit(info683, ";")[[1]]
+ANN_entry683 <- info_split683[grepl("^ANN=", info_split683)]
+ANN_value683 <- sub("^ANN=", "", ANN_entry683)
+first_ann_683 <- strsplit(ANN_value683, ",")[[1]][1]
+ann_fields_683 <- strsplit(first_ann_683, "\\|")[[1]]
+
+cat("First ANN for variant 683 (raw):\n", first_ann_683, "\n\n")
+cat("Parsed relevant fields:\n")
+cat(" Annotation:", ann_fields_2 <- ann_fields_683[2], "\n")
+cat(" Impact:", ann_fields_3 <- ann_fields_683[3], "\n")
+cat(" Gene name:", ann_fields_4 <- ann_fields_683[4], "\n")
+
+```
 
 
 ### Q5.5. Within the entire VCF file, how many HIGH impact variants we see in total? 
 
+```{r}
+# Function to extract all ANN entries (first annotation only) and parse impact
+extract_first_ann <- function(info_str) {
+  comps <- strsplit(as.character(info_str), ";")[[1]]
+  ann_entry <- comps[grepl("^ANN=", comps)]
+  if (length(ann_entry)==0) return(NA)
+  ann_value <- sub("^ANN=", "", ann_entry)
+  first_ann <- strsplit(ann_value, ",")[[1]][1]
+  fields <- strsplit(first_ann, "\\|")[[1]]
+  # return a named list (some fields may be missing - handle safely)
+  list(
+    allele = ifelse(length(fields)>=1, fields[1], NA),
+    annotation = ifelse(length(fields)>=2, fields[2], NA),
+    impact = ifelse(length(fields)>=3, fields[3], NA),
+    gene = ifelse(length(fields)>=4, fields[4], NA)
+  )
+}
+
+# apply over all variants
+anns <- lapply(variants$INFO, extract_first_ann)
+ann_df <- do.call(rbind, lapply(anns, function(x) as.data.frame(x, stringsAsFactors=FALSE)))
+
+# count HIGH impact
+high_count <- sum(ann_df$impact == "HIGH", na.rm=TRUE)
+cat("Number of HIGH-impact variants:", high_count, "\n")
+
+```
+
 
 ### Q5.6. What is a frameshift variant? Does it have a greater or lesser effect on the resultant protein than a missense variant? Why?  
+
+A frameshift variant is an insertion or deletion (indel) that changes the reading frame of the coding sequence because the number of inserted or deleted nucleotides is not a multiple of three. This shifts how codons are read downstream of the variant and generally leads to a run of incorrect amino acids and often an early stop codon (nonsense) — producing a truncated, usually nonfunctional protein.
+
+A frameshift variant typically has a greater effect than a missense variant. A missense changes one codon to a codon for a different amino acid (single amino-acid substitution) — this can be benign, deleterious, or occasionally beneficial. Frameshifts usually disrupt the entire downstream protein sequence and frequently generate premature stop codons, so the effect is commonly more severe.
 
 
 ### Q5.7. We can divide variants into two broad categories: intronic/intergenic and exonic. Count the
@@ -426,10 +518,43 @@ Hint: Use grepl() on the INFO field to look for tell-tale tags.
 
 Hint: assume no overlap between exonic and intronic tags within a variant entry.  
 
+```{r}
+# We assume "intron" will appear in the ANN 'annotation' field for intronic variants (snpEff uses 'intron_variant')
+intronic_bool <- grepl("intron", ann_df$annotation, ignore.case=TRUE)
+n_intronic <- sum(intronic_bool, na.rm=TRUE)
+n_total_variants <- nrow(variants)
+
+cat("Total variants:", n_total_variants, "\n")
+cat("Intronic variants:", n_intronic, "\n")
+cat(sprintf("Intronic fraction: %.2f%%\n", 100 * n_intronic / n_total_variants))
+
+```
+
+
 
 ### Q5.8. List all the genes that have been affected by coding mutations and have high impact. What do you find that is interesting?  
 
-Hint: You can use SNPeff HIGH/MODERATE impact field to help you finding those genes.  
+Hint: You can use SNPeff HIGH/MODERATE impact field to help you finding those genes. 
+
+```{r}
+# define a function to detect "coding" annotations: these are those that alter coding sequence
+# snpEff annotations that are coding: missense_variant, synonymous_variant, frameshift_variant, stop_gained, splice_acceptor_variant, splice_donor_variant, start_lost, etc.
+coding_terms <- c("missense_variant", "synonymous_variant", "frameshift_variant", "stop_gained",
+                  "splice_acceptor_variant", "splice_donor_variant", "start_lost", "stop_lost",
+                  "inframe_insertion", "inframe_deletion", "coding_sequence_variant")
+
+is_coding <- sapply(ann_df$annotation, function(x) any(sapply(coding_terms, function(t) grepl(t, x, ignore.case=TRUE))))
+is_high <- ann_df$impact == "HIGH"
+
+genes_high_coding <- unique(ann_df$gene[is_coding & is_high])
+genes_high_coding <- genes_high_coding[!is.na(genes_high_coding) & genes_high_coding!=""]
+
+cat("Genes with HIGH-impact coding mutations (unique list):\n")
+print(genes_high_coding)
+cat(sprintf("Count: %d\n", length(genes_high_coding)))
+
+```
+
 
 
 ### Q5.9. (bonus):
