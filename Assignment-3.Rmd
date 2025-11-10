@@ -635,6 +635,43 @@ Document (GATK) section 5.
 ```{r}
 # Q5.10 - Variant Allele Frequency (VAF) Calculation and Analysis
 
+# PART 1: CALCULATE VAF VALUES 
+# Parse the genotype field to extract allele depths and calculate VAF
+VAF_values <- c()  # Initialize empty vector to store VAF for each variant
+
+for (i in 1:nrow(variants)) {
+  format_field <- as.character(variants$FORMAT[i])
+  genotype_field <- as.character(variants[i, 10])  
+  format_fields <- strsplit(format_field, ":")[[1]]
+  genotype_values <- strsplit(genotype_field, ":")[[1]]
+
+  # Find which position contains the AD (Allele Depth) field
+  AD_index <- which(format_fields == "AD")
+
+  # If AD field exists, calculate VAF
+  if (length(AD_index) > 0) {
+    allele_depths <- genotype_values[AD_index]
+    depths <- as.numeric(strsplit(allele_depths, ",")[[1]])
+
+    # Calculate VAF = alt_count / (ref_count + alt_count)
+    if (length(depths) >= 2 && (depths[1] + depths[2]) > 0) {
+      VAF <- depths[2] / (depths[1] + depths[2])
+      VAF_values <- c(VAF_values, VAF)
+    } else {
+      
+      # If depths are invalid, store NA
+      VAF_values <- c(VAF_values, NA)
+    }
+  } else {
+    
+    # No AD field found, store NA
+    VAF_values <- c(VAF_values, NA)
+  }
+}
+
+# Add VAF as a new column to the variants dataframe
+variants$VAF <- VAF_values
+
 # Display basic statistics about VAF calculation success
 cat("=== VAF STATISTICS ===\n")
 cat("Total variants:", nrow(variants), "\n")
