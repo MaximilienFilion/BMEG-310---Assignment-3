@@ -363,6 +363,19 @@ fluorophore?
 
 Hint: Think about studying cell populations under a microscope.  
 
+```{r}
+# Chromosome name is in V3 - RNAME
+unique(sam$V3)
+
+
+
+# Count reads aligning to tdTomato
+num_tdTomato_reads <- sum(sam$V3 == "tdTomato")
+paste("Number of reads aligning to tdTomato:", num_tdTomato_reads)
+```
+63 reads is a sign of low-level expression. There is a few steps that are needed for a cell to be fluorescent. If the tomato protein does not mature properly or if the expression level is not strong enough, it will be difficult to observe fluorescence under the microscope. Assuming that the cells are fluorescent, tdtomato might be used as a way to ensure the transduction or transfection of a given population was done properly. It is a non invasive and non-destructive way of assesing the expression of specific genes. For example, if a gene of interest was added to the genome of a mouse, attached to a tdtomato gene, the presence of tdtomato indicated the successful expression of the gene of interest as well.
+
+
 ## Q5. Investigating the Variants  
 We have used Strelka, which is a variant-calling tool, to find all of the SNPs and short indels in the
 genome of this cell using the BAM file. The variants were then annotated using snpEff to label
