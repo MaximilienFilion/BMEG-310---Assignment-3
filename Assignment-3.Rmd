@@ -297,6 +297,7 @@ We can see that the three upper quartiles are quite condensed, suggesting a good
 
 ### Q4.6. Referring to section 1.4 of the SAM/BAM documentation, what column contains the leftmost mapping position of the reads?  
 
+From section 1.4 of the SAM/BAM documentation, the column containing the leftmost mapping position of the reads is Column 4 - POS (1-based leftmost mapping POSition). 
 
 ### Q4.7. 
 In order to transform a BAM file into expression levels for each gene, we need to count the
@@ -304,6 +305,18 @@ number of reads covering a particular location or gene. The protein Hspa8 is loc
 chromosome 9 at bases 40801273 - 40805199. How many reads have their leftmost mapping
 position aligned within these coordinates?  
 
+```{r}
+# Define Chromosomes
+start_base <- 40801273
+end_base <- 40805199
+
+# Find chromosome 9 & reads within defined chromosomes
+Hspa8_reads <- sam[sam$V3 == "9" & sam$V4 >= start_base & sam$V4 <= end_base, ]
+
+# Count number of reads 
+num_Hspa8_reads <- nrow(Hspa8_reads)
+paste("There are", num_Hspa8_reads, "reads with leftmost mapping position within the Hspa8 region.")
+```
 
 Hint: you can implement AND logic on two column vectors with "&".  
 
@@ -311,11 +324,33 @@ Hint: you can implement AND logic on two column vectors with "&".
 the alignment step of processing our library data. It is reported as an integer between 0 and 255.
 How many reads have mapping quality less than 50?  
 
+```{r}
+# Find number of reads with mapping quality less than 50
+reads_u50 <- sam[sam$V5 < 50, ]
+num_reads_u50 <- nrow(reads_u50)
+paste("There are", num_reads_u50, "reads with mapping quality less than 50.")
+```
+
 
 ### Q4.9. What is the mean mapping quality of the reads which have mapping quality less than 50?  
 
 Hint: you can obtain a subset of a dataframe by using df[bool_vec,] where bool_vec contains
 TRUE/FALSE elements and bool_vec and df have the same number of rows.   
+
+```{r}
+# Create logical vector for reads with MAPQ < 50
+low_quality_vec <- sam$V5 < 50
+
+# Obtain subset of df
+low_quality_subset <- sam[low_quality_vec, ]
+
+# Find the mean
+mean_low_quality <- mean(low_quality_subset$V5, na.rm = TRUE)
+paste("The mean mapping quality of reads with MAPQ < 50 is", round(mean_low_quality, 2))
+
+# Verify this
+table(reads_u50$V5) # makes sense bc most of the reads have 0 confidence
+```
 
 
 ### Q4.10. (bonus): The genome of the mouse used in this experiment has been edited to include the
@@ -578,20 +613,133 @@ Hint: You will need to parse the genotype encoding field (GT:GQ:GQX:DP:DPF...) t
 counts and then get VAF. To understand that column, look at the VCF Variant Call Format
 Document (GATK) section 5.  
 
+
+```{r}
+# Q5.10 - Variant Allele Frequency (VAF) Calculation and Analysis
+
+# Display basic statistics about VAF calculation success
+cat("=== VAF STATISTICS ===\n")
+cat("Total variants:", nrow(variants), "\n")
+cat("Variants with valid VAF:", sum(!is.na(VAF_values)), "\n\n")
+
+# Remove NA values for analysis
+VAF_clean <- VAF_values[!is.na(VAF_values)]
+
+# Display distribution statistics
+cat("VAF Distribution:\n")
+cat("Min:", round(min(VAF_clean), 4), "\n")
+cat("Q1 (25%):", round(quantile(VAF_clean, 0.25), 4), "\n")
+cat("Median:", round(median(VAF_clean), 4), "\n")
+cat("Mean:", round(mean(VAF_clean), 4), "\n")
+cat("Q3 (75%):", round(quantile(VAF_clean, 0.75), 4), "\n")
+cat("Max:", round(max(VAF_clean), 4), "\n\n")
+
+# Create side-by-side histogram and boxplot using base R
+par(mfrow=c(1,2))  # Set up 1 row, 2 columns layout
+
+# Histogram showing the frequency distribution of VAF values
+hist(VAF_clean, breaks = 30, 
+     main = "Histogram of VAF", 
+     xlab = "Variant Allele Frequency",
+     col = "lightblue",
+     xlim = c(0, 1))
+# Add reference line at 0.5 (expected VAF for heterozygous variants)
+abline(v = 0.5, col = "red", lwd = 2, lty = 2)
+# Add label explaining the reference line
+text(0.5, max(hist(VAF_clean, plot=FALSE)$counts) * 0.9, 
+     "Expected for\nheterozygous (0/1)", pos = 4, col = "red")
+
+# Boxplot showing the distribution and outliers of VAF values
+boxplot(VAF_clean,
+        main = "Boxplot of VAF",
+        ylab = "Variant Allele Frequency",
+        col = "coral",
+        ylim = c(0, 1))
+# Add reference line at 0.5
+abline(h = 0.5, col = "red", lwd = 2, lty = 2)
+
+# Reset plotting layout to single plot
+par(mfrow=c(1,1))
+
+# Create an enhanced ggplot2 version of the boxplot
+library(ggplot2)
+vaf_df <- data.frame(VAF = VAF_clean)
+
+ggplot(vaf_df, aes(x = "", y = VAF)) +
+  # Create boxplot with coral fill and semi-transparent appearance
+  geom_boxplot(fill = "coral", alpha = 0.6, 
+               outlier.color = "red", outlier.alpha = 0.5) +
+  # Add horizontal reference line at 0.5 (expected VAF for heterozygous)
+  geom_hline(yintercept = 0.5, color = "blue", linetype = "dashed", size = 1) +
+  # Add annotation explaining the reference line
+  annotate("text", x = 1.3, y = 0.5, label = "Expected for\nheterozygous", 
+           color = "blue", size = 3.5) +
+  # Set axis labels and title
+  xlab("") +
+  ylab("Variant Allele Frequency (VAF)") +
+  ggtitle("Distribution of Variant Allele Frequencies (Single-Cell Data)") +
+  theme_minimal() +
+  # Remove x-axis text since there's only one category
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  # Format y-axis as percentages from 0-100%
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),
+                     breaks = seq(0, 1, 0.25))
+
+# Count how many variants have VAF > 5%
+high_VAF_count <- sum(VAF_clean > 0.05, na.rm = TRUE)
+cat("\n=== VARIANT COUNTS ===\n")
+cat("Number of variants with VAF > 5%:", high_VAF_count, "\n")
+cat("Percentage of all variants:", round(100 * high_VAF_count / length(VAF_clean), 1), "%\n\n")
+
+# Extract and display the genotype (GT) distribution from all variants
+# This shows how many variants are heterozygous (0/1), homozygous alt (1/1), etc.
+gt_dist <- table(sapply(1:nrow(variants), function(i) {
+  gt_fields <- strsplit(as.character(variants[i, 10]), ":")[[1]]
+  gt_fields[1]  # GT is the first field in the genotype column
+}))
+
+cat("Genotype distribution:\n")
+print(gt_dist)
+cat("\nInterpretation:\n")
+cat("- 0/1 (heterozygous): Expected VAF ≈ 50%\n")
+cat("- 1/1 (homozygous alt): Expected VAF ≈ 100%\n")
+cat("- 0/0 (homozygous ref): Expected VAF ≈ 0%\n\n")
+
+# Count how many high VAF variants are in coding regions
+# Uses the is_coding vector created in Q5.8
+if (exists("is_coding")) {
+  high_vaf_coding <- sum(!is.na(variants$VAF) & 
+                         variants$VAF > 0.05 & 
+                         is_coding, 
+                         na.rm = TRUE)
+  cat("High VAF variants (>5%) in coding regions:", high_vaf_coding, "\n")
+  cat("Percentage of high VAF that are coding:", 
+      round(100 * high_vaf_coding / high_VAF_count, 1), "%\n\n")
+}
+
+# Provide biological context for interpreting the VAF distribution
+cat("=== BIOLOGICAL INTERPRETATION ===\n")
+cat("This is SINGLE-CELL RNA-seq data from one mouse cell.\n")
+cat("The VAF distribution centered around 50-70% is EXPECTED because:\n")
+cat("1. Most variants are heterozygous (0/1) - one copy has the variant\n")
+cat("2. In a diploid cell, heterozygous variants should show ~50% VAF\n")
+cat("3. Deviation from 50% is due to:\n")
+cat("   - Low sequencing depth causing sampling noise\n")
+cat("   - Allelic imbalance in gene expression (one allele more active)\n")
+cat("   - Random monoallelic expression in single cells\n")
+cat("4. VAFs near 100% likely represent homozygous variants (1/1)\n")
+cat("5. VAFs near 0% would be sequencing errors or reference calls\n\n")
+
+cat("This contrasts with bulk tumor sequencing where:\n")
+cat("- Low VAF (5-30%) would indicate subclonal variants\n")
+cat("- High VAF (>70%) would indicate clonal/germline variants\n")
+
+```
 ## APPENDIX
 SAM/BAM Format Specification Document: https://samtools.github.io/hts-specs/SAMv1.pdf
 VCF Variant Call Format Document (GATK): https://gatk.broadinstitute.org/hc/en-us/articles/36003
 5531692-VCF-Variant-Call-Format
 snpEff Annotations Document: http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
-
-
-
-
-
-
-
-
-
-
-
 
