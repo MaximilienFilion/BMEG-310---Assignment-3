@@ -320,7 +320,8 @@ paste("There are", num_Hspa8_reads, "reads with leftmost mapping position within
 
 Hint: you can implement AND logic on two column vectors with "&".  
 
-### Q4.8. Mapping quality is an indication of how well a read aligned to the reference genome during
+### Q4.8. 
+Mapping quality is an indication of how well a read aligned to the reference genome during
 the alignment step of processing our library data. It is reported as an integer between 0 and 255.
 How many reads have mapping quality less than 50?  
 
@@ -353,7 +354,8 @@ table(reads_u50$V5) # makes sense bc most of the reads have 0 confidence
 ```
 
 
-### Q4.10. (bonus): The genome of the mouse used in this experiment has been edited to include the
+### Q4.10. (bonus): 
+The genome of the mouse used in this experiment has been edited to include the
 DNA sequence for the protein 'tdTomato', which is a fluorophore. Count the number of reads
 which align to the tdTomato sequence. Assuming that these reads are accurate, would you expect
 this cell to emit fluorescently? What might be the purpose of modifying a genome to include a
@@ -397,7 +399,8 @@ Hint: Take a look at the VCF Variant Call Format document in the appendix for de
 column name.   
 
 
-### Q5.2. The INFO field is organised into variables by the form 'TAG=value' (see the VCF Variant Call
+### Q5.2. 
+The INFO field is organised into variables by the form 'TAG=value' (see the VCF Variant Call
 Format document). Write code to obtain the entirety of the ANN info value contents from the
 INFO field for the first variant.  
 
@@ -545,7 +548,8 @@ A frameshift variant is an insertion or deletion (indel) that changes the readin
 A frameshift variant typically has a greater effect than a missense variant. A missense changes one codon to a codon for a different amino acid (single amino-acid substitution) — this can be benign, deleterious, or occasionally beneficial. Frameshifts usually disrupt the entire downstream protein sequence and frequently generate premature stop codons, so the effect is commonly more severe.
 
 
-### Q5.7. We can divide variants into two broad categories: intronic/intergenic and exonic. Count the
+### Q5.7. 
+We can divide variants into two broad categories: intronic/intergenic and exonic. Count the
 number of potential intronic variants. What do you notice about the number of intronic variants
 (compared to overall number of variants)?  
 
@@ -597,6 +601,7 @@ Using Strelka on our data, we can detect indels, but only to a limited extent. M
 of the reads in our BAM file have read lengths around 60bp long. Why might this have
 consequences for the detection of insertions that are longer than 60bp?  
 
+Insertions longer than 60 bp cannot be fully represented within reads of 60 bp, so Strelka, and other short-read variant callers, will fail to detect them because no read can span both the inserted sequence and its flanking regions to provide clear alignment evidence.
 
 ### Q5.10. 
 Variant Allele Frequency (VAF) is an important metric that helps us to measure how many
